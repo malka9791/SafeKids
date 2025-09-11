@@ -48,7 +48,7 @@ const schema = Yup.object().shape({
     .min(1, "חובה להזין לפחות אלרגיה אחת")
     .required("אלרגיות זהו שדה חובה"),
 });
-const Form2 = () => {
+const Form = () => {
   // React Hook Form setup
   const {
     control,
@@ -80,185 +80,200 @@ const Form2 = () => {
 
   const allergies = ["בוטנים", "חלב", "ביצים", "דגים", "סויה", "שומשום"];
   const filter = createFilterOptions<string>();
-  const imageWidthPx = 1190; // רוחב הטופס המקורי בפיקסלים
-  const imageHeightPx = 1683; // גובה הטופס המקורי בפיקסלים
-  const xPx = 60;
-  const yPx = 250;
-  const widthPx = 214;
-  const heightPx = 235;
+  const imageWidthPx = 1190;
+  const imageHeightPx = 1683;
 
+function createTextBlock(
+  text: string,
+  rectPx: { width: number; height: number },
+  options?: { font?: string; lineHeight?: number; padding?: number }
+): string {
+  const canvas = document.createElement("canvas");
+  canvas.width = rectPx.width;
+  canvas.height = rectPx.height;
+  const ctx = canvas.getContext("2d")!;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // --- חישוב אוטומטי של גודל פונט, lineHeight ו-padding לפי הריבוע ---
+  const padding = options?.padding ?? Math.max(2, rectPx.width * 0.03);
+  const fontSize = options?.font
+    ? parseInt(options.font.replace(/\D/g, ""))
+    : Math.max(8, rectPx.height * 0.6); // גודל פונט אוטומטי לפי גובה הריבוע
+  const lineHeight = options?.lineHeight ?? fontSize + 2;
+
+  ctx.font = `${fontSize}px Arial`;
+  ctx.textAlign = "right";
+  ctx.direction = "rtl";
+  ctx.fillStyle = "black";
+
+  // --- פונקציה לחיתוך טקסט לשורות ---
+  function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
+    const words = text.split(" ");
+    const lines: string[] = [];
+    let currentLine = "";
+
+    for (let i = 0; i < words.length; i++) {
+      const testLine = currentLine + (currentLine ? " " : "") + words[i];
+      const testWidth = ctx.measureText(testLine).width;
+      if (testWidth > maxWidth) {
+        if (currentLine) lines.push(currentLine);
+        currentLine = words[i];
+      } else {
+        currentLine = testLine;
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+    return lines;
+  }
+
+  const wrappedLines = text
+    .split("\n")
+    .flatMap((line) => wrapText(ctx, line, canvas.width - 2 * padding));
+
+  const startX = canvas.width - padding;
+  const startY = padding;
+
+  wrappedLines.forEach((line, index) => {
+    const yPosition = startY + lineHeight * index;
+    if (yPosition + lineHeight > canvas.height - padding) {
+      // קיצור השורה האחרונה אם היא חורגת
+      let truncatedLine = line;
+      const availableWidth = canvas.width - 2 * padding;
+      while (ctx.measureText(truncatedLine).width > availableWidth && truncatedLine.length > 0) {
+        truncatedLine = truncatedLine.slice(0, -1);
+      }
+      ctx.fillText(truncatedLine, startX, yPosition);
+      return;
+    }
+    ctx.fillText(line, startX, yPosition);
+  });
+
+  return canvas.toDataURL("image/png");
+}
+
+
+  // --- פונקציה להוספת כמה טקסטים ל-PDF ---
+  function addTextBlocksToPDF(
+    doc: jsPDF,
+    blocks: {
+      text: string;
+      rectPx: { x: number; y: number; width: number; height: number };
+      options?: { font?: string; lineHeight?: number; padding?: number };
+    }[]
+  ) {
+    blocks.forEach(({ text, rectPx, options }) => {
+      const rectMm = {
+        x: (rectPx.x / imageWidthPx) * 210,
+        y: (rectPx.y / imageHeightPx) * 297,
+        w: (rectPx.width / imageWidthPx) * 210,
+        h: (rectPx.height / imageHeightPx) * 297,
+      };
+
+      const textCanvasData = createTextBlock(
+        text,
+        {
+          width: rectPx.width,
+          height: rectPx.height,
+        },
+        options
+      );
+      doc.addImage(
+        textCanvasData,
+        "PNG",
+        rectMm.x,
+        rectMm.y,
+        rectMm.w,
+        rectMm.h
+      );
+    });
+  }
+
+  // --- פונקציה להוספת תמונה לריבוע עם חיתוך ---
+  function addImageToPDF(
+    doc: jsPDF,
+    img: HTMLImageElement,
+    xPx: number,
+    yPx: number,
+    widthPx: number,
+    heightPx: number
+  ) {
+    const x = (xPx / imageWidthPx) * 210;
+    const y = (yPx / imageHeightPx) * 297;
+    const w = (widthPx / imageWidthPx) * 210;
+    const h = (heightPx / imageHeightPx) * 297;
+
+    const rectRatio = widthPx / heightPx;
+    const imgRatio = img.width / img.height;
+    let sx = 0,
+      sy = 0,
+      sw = img.width,
+      sh = img.height;
+
+    if (imgRatio > rectRatio) {
+      sw = img.height * rectRatio;
+      sx = (img.width - sw) / 2;
+    } else {
+      sh = img.width / rectRatio;
+      sy = (img.height - sh) / 2;
+    }
+
+    const cropCanvas = document.createElement("canvas");
+    cropCanvas.width = sw;
+    cropCanvas.height = sh;
+    const cropCtx = cropCanvas.getContext("2d")!;
+    cropCtx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+
+    doc.addImage(
+      cropCanvas.toDataURL("image/jpeg", 0.7),
+      "JPEG",
+      x,
+      y,
+      w,
+      h,
+      undefined,
+      "MEDIUM"
+    );
+  }
+
+  // --- הפונקציה הראשית ליצירת PDF ---
   const handleExportPDF = (data: FormValues) => {
     const doc = new jsPDF("p", "mm", "a4");
     doc.addImage(formTemplate, "JPEG", 0, 0, 210, 297, undefined, "FAST");
+
+  const textBlocks: {
+  text: string;
+  rectPx: { x: number; y: number; width: number; height: number };
+  options?: { font?: string; lineHeight?: number; padding?: number };
+}[] = [
+  {
+    text: `שם הילד/ה: ${data.name}\nאלרגי/ת ל: ${selected.join(
+      ", "
+    )}\nפלאפון אבא: ${data.phone1}\nפלאפון אמא: ${data.phone2}`,
+    rectPx: { x: 285, y: 250, width: 467, height: 246 },
+    options: { font: "24px Arial", lineHeight: 44, padding: 48 },
+  },
+  {
+    text: "14",
+    rectPx: { x: 188, y: 722, width: 46, height: 28 },
+    options: { font: "18px Arial", lineHeight: 20, padding: 2 },
+  },
+];
 
     if (data.imgUrl) {
       const img = new Image();
       img.src = data.imgUrl;
       img.onload = () => {
-        // --- חישוב מיקום וגודל הריבוע ב-mm ---
-        const x = (xPx / imageWidthPx) * 210;
-        const y = (yPx / imageHeightPx) * 297;
-        const w = (widthPx / imageWidthPx) * 210;
-        const h = (heightPx / imageHeightPx) * 297;
-
-        // --- crop cover: חיתוך מהתמונה כך שתכסה את כל הריבוע בלי עיוות ---
-        const rectRatio = widthPx / heightPx;
-        const imgRatio = img.width / img.height;
-        let sx = 0,
-          sy = 0,
-          sw = img.width,
-          sh = img.height;
-
-        if (imgRatio > rectRatio) {
-          // התמונה רחבה מדי, חותכים צדדים
-          sw = img.height * rectRatio;
-          sx = (img.width - sw) / 2;
-        } else {
-          // התמונה גבוהה מדי, חותכים למעלה/למטה
-          sh = img.width / rectRatio;
-          sy = (img.height - sh) / 2;
-        }
-
-        // יצירת קנבס זמני לחיתוך
-        const cropCanvas = document.createElement("canvas");
-        cropCanvas.width = sw;
-        cropCanvas.height = sh;
-        const cropCtx = cropCanvas.getContext("2d")!;
-        cropCtx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
-
-        // הוספת התמונה החתוכה ל-PDF בדיוק על הריבוע
-        doc.addImage(
-          cropCanvas.toDataURL("image/jpeg", 0.7),
-          "JPEG",
-          x,
-          y,
-          w,
-          h,
-          undefined,
-          "MEDIUM"
-        );
-
-        // --- ציור טקסט בתוך הריבוע ---
-        const rectXpx = 285;
-        const rectYpx = 250;
-        const rectWidthPx = 467;
-        const rectHeightPx = 246;
-
-        const rectXmm = (rectXpx / imageWidthPx) * 210;
-        const rectYmm = (rectYpx / imageHeightPx) * 297;
-        const rectWidthMm = (rectWidthPx / imageWidthPx) * 210;
-        const rectHeightMm = (rectHeightPx / imageHeightPx) * 297;
-
-        // יצירת קנבס בגודל הריבוע בלבד
-        const canvas = document.createElement("canvas");
-        canvas.width = rectWidthPx;
-        canvas.height = rectHeightPx;
-        const ctx = canvas.getContext("2d")!;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // הגדרות טקסט
-        ctx.font = "24px Arial";
-        ctx.direction = "rtl";
-        ctx.textAlign = "right";
-        ctx.fillStyle = "black";
-
-        const lineHeight = 44; // ריווח גדול בין שורות
-        const padding = 48; // מרווח גדול מכל הכיוונים
-
-        // הגבלת ציור הטקסט לתוך הריבוע בלבד
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(0, 0, canvas.width, canvas.height);
-        ctx.clip();
-
-        // פונקציה לפיצול טקסט לשורות
-        function wrapText(
-          ctx: CanvasRenderingContext2D,
-          text: string,
-          maxWidth: number
-        ): string[] {
-          const words = text.split(" ");
-          const lines: string[] = [];
-          let currentLine = "";
-
-          for (let i = 0; i < words.length; i++) {
-            const testLine = currentLine + (currentLine ? " " : "") + words[i];
-            const testWidth = ctx.measureText(testLine).width;
-
-            if (testWidth > maxWidth) {
-              lines.push(currentLine);
-              currentLine = words[i];
-            } else {
-              currentLine = testLine;
-            }
-          }
-
-          if (currentLine) {
-            lines.push(currentLine);
-          }
-
-          return lines;
-        }
-
-        // טקסט לדוגמה
-        const text = ` שם הילד/ה: ${data.name}\n אלרגי/ת ל: ${selected.join(
-          ", "
-        )}\nפלאפון אבא: ${data.phone1}\n פלאפון אמא: ${data.phone2}`;
-
-        // חלוקת הטקסט לשורות
-        const wrappedLines = text
-          .split("\n")
-          .flatMap((line) => wrapText(ctx, line, canvas.width - 2 * padding));
-
-        // ציור הטקסט בתוך ריבוע
-        const startX = canvas.width - padding; // ימין
-        const startY = padding; // היה padding + lineHeight, עכשיו רק padding
-
-        ctx.textAlign = "right";
-        ctx.direction = "rtl";
-
-        wrappedLines.forEach((line, index) => {
-          const yPosition = startY + lineHeight * index;
-
-          // בדיקה אם השורה חורגת מגובה הריבוע
-          if (yPosition + lineHeight > canvas.height - padding) {
-            // קיצור השורה האחרונה והוספת "..."
-
-            const availableWidth = canvas.width - 2 * padding;
-            let truncatedLine = line;
-
-            while (
-              ctx.measureText(truncatedLine).width > availableWidth &&
-              truncatedLine.length > 0
-            ) {
-              truncatedLine = truncatedLine.slice(0, -1);
-            }
-
-            ctx.fillText(truncatedLine, startX, yPosition);
-            return;
-          }
-
-          ctx.fillText(line, startX, yPosition);
-        });
-
-        ctx.restore(); // סיום קליפינג
-
-        // הוספת הקנבס ל-PDF
-        const canvasData = canvas.toDataURL("image/png");
-        doc.addImage(
-          canvasData,
-          "PNG",
-          rectXmm,
-          rectYmm,
-          rectWidthMm,
-          rectHeightMm
-        );
-
+        // הוספת התמונה בתוך ריבוע לדוגמה
+        addImageToPDF(doc, img, 60, 250, 214, 235);
+        // הוספת כל הטקסטים
+        addTextBlocksToPDF(doc, textBlocks);
         doc.save("test_form.pdf");
       };
+    } else {
+      addTextBlocksToPDF(doc, textBlocks);
+      doc.save("test_form.pdf");
     }
   };
-
   const handleCloseSuccess = () => {
     setShowSuccess(false);
   };
@@ -1031,4 +1046,4 @@ const Form2 = () => {
   );
 };
 
-export default Form2;
+export default Form;

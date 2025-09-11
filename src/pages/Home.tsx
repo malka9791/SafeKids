@@ -236,8 +236,8 @@ export default function SafeKidsHomepage() {
       {/* Footer */}
       <Box component="footer" py={8} bgcolor="grey.900" color="white">
         <Container>
-          <Grid container spacing={6}>
-            <Grid size={{ xs: 12, md: 6 }}>
+          <Grid container spacing={6} display={"flex"} justifyContent={"space-between"} alignItems={"center"}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <Box display="flex" alignItems="center" gap={1} mb={2}>
                 <img
                   src="../src/img/logo2.jpg"
@@ -246,18 +246,48 @@ export default function SafeKidsHomepage() {
                 />
               </Box>
               <Typography color="grey.400">
-                המערכת המובילה ביצירת כרטיסי אלרגיות דיגיטליים לילדים. בטיחות,
+                המערכת המובילה ביצירת כרטיסי אלרגיות לילדים. בטיחות,
                 נוחות ושקט נפשי להורים בכל מקום.
               </Typography>
             </Grid>
-            <Grid size={{ xs: 6, md: 3 }}>
+            <Grid size={{ xs: 6, md: 4 }} flexDirection={"column"} display={"flex"} justifyContent={"center"} alignItems={"center"}>
               <Typography fontWeight="bold" mb={2}>
                 קישורים
               </Typography>
-              <Typography color="grey.400">יתרונות</Typography>
-              <Typography color="grey.400">אודות</Typography>
-              <Typography color="grey.400">תמיכה</Typography>
-              <Typography color="grey.400">צור קשר</Typography>
+              {/* <Typography color="grey.400">יתרונות</Typography> */}
+              <Typography
+                component="a"
+                href="/form"
+                color="grey.400"
+                sx={{
+                  textDecoration: "none",
+                  "&:hover": { color: "#fff" },
+                }}
+              >
+                ליצירת טופס
+              </Typography>
+              <Typography
+                component="a"
+                href="/form"
+                color="grey.400"
+                sx={{
+                  textDecoration: "none",
+                  "&:hover": { color: "#fff" },
+                }}
+              >
+                הוראות
+              </Typography>
+              <Typography
+                component="a"
+                href="/form"
+                color="grey.400"
+                sx={{
+                  textDecoration: "none",
+                  "&:hover": { color: "#fff" },
+                }}
+              >
+                צור קשר
+              </Typography>
             </Grid>
             <Grid size={{ xs: 6, md: 3 }}>
               <Typography fontWeight="bold" mb={2}>

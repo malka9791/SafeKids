@@ -52,7 +52,7 @@ export function Header() {
                 color="inherit"
                 sx={{ color: "text.primary", "&:hover": { color: "#4ed9df" } }}
               >
-                הסבר
+                הוראות
               </Button>
               <Button
                 color="inherit"
@@ -60,7 +60,7 @@ export function Header() {
                 component={Link}
                 to="/form"
               >
-                 צור כרטיס עכשיו
+                צור כרטיס
               </Button>
             </Box>
           )}
