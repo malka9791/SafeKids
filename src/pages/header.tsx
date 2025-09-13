@@ -7,6 +7,7 @@ import {
   useTheme,
 } from "@mui/material";
 import { Link, useNavigate } from "react-router";
+import Logo from "../img/logo2.jpg"
 
 export function Header() {
   const navigate = useNavigate();
@@ -22,7 +23,7 @@ export function Header() {
               size={32} color={theme.palette.primary.main}{" "}
             </Box>
             <img
-              src="./src/img/logo2.jpg"
+              src={Logo}
               alt="Logo"
               style={{ width: 250, height: 70 }}
             />

@@ -240,6 +240,8 @@ const Form2 = () => {
 
           ctx.fillText(line, startX, yPosition);
         });
+        const startX2 = canvas.width - 150;
+        ctx.fillText("14", startX2, 150);
 
         ctx.restore(); // סיום קליפינג
 
@@ -254,7 +256,7 @@ const Form2 = () => {
           rectHeightMm
         );
 
-        doc.save("test_form.pdf");
+        doc.save(`טופס אלרגיה ${data.name}.pdf`);
       };
     }
   };

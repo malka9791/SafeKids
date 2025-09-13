@@ -8,7 +8,8 @@ import {
   Paper,
   Card,
 } from "@mui/material";
-
+import ExampleForm from "../img/example-form.jpg";
+import Logo from "../img/logo2.jpg";
 import ShieldIcon from "@mui/icons-material/Security";
 // import GroupIcon from "@mui/icons-material/Group";
 // import DescriptionIcon from "@mui/icons-material/Description";
@@ -188,7 +189,7 @@ export default function SafeKidsHomepage() {
                 </Box>
                 <Box>
                   <img
-                    src="../src/img/example-form.jpg"
+                    src={ExampleForm}
                     alt="example"
                     style={{ width: "100%" }}
                   />
@@ -236,21 +237,33 @@ export default function SafeKidsHomepage() {
       {/* Footer */}
       <Box component="footer" py={8} bgcolor="grey.900" color="white">
         <Container>
-          <Grid container spacing={6} display={"flex"} justifyContent={"space-between"} alignItems={"center"}>
+          <Grid
+            container
+            spacing={6}
+            display={"flex"}
+            justifyContent={"space-between"}
+            alignItems={"center"}
+          >
             <Grid size={{ xs: 12, md: 4 }}>
               <Box display="flex" alignItems="center" gap={1} mb={2}>
                 <img
-                  src="../src/img/logo2.jpg"
+                  src={Logo}
                   alt="Logo"
                   style={{ width: 150, height: "auto" }}
                 />
               </Box>
               <Typography color="grey.400">
-                המערכת המובילה ביצירת כרטיסי אלרגיות לילדים. בטיחות,
-                נוחות ושקט נפשי להורים בכל מקום.
+                המערכת המובילה ביצירת כרטיסי אלרגיות לילדים. בטיחות, נוחות ושקט
+                נפשי להורים בכל מקום.
               </Typography>
             </Grid>
-            <Grid size={{ xs: 6, md: 4 }} flexDirection={"column"} display={"flex"} justifyContent={"center"} alignItems={"center"}>
+            <Grid
+              size={{ xs: 6, md: 4 }}
+              flexDirection={"column"}
+              display={"flex"}
+              justifyContent={"center"}
+              alignItems={"center"}
+            >
               <Typography fontWeight="bold" mb={2}>
                 קישורים
               </Typography>
