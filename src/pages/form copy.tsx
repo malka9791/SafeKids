@@ -16,7 +16,12 @@ import {
 import { Controller } from "react-hook-form";
 import { useState } from "react";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import { CheckCircle, CloudUpload, Phone } from "@mui/icons-material";
+import {
+  CheckCircle,
+  CloudUpload,
+  LocalDrink,
+  Phone,
+} from "@mui/icons-material";
 import EditNoteIcon from "@mui/icons-material/EditNote";
 import jsPDF from "jspdf";
 import formTemplate from "../img/form.jpg";
@@ -30,6 +35,7 @@ type FormValues = {
   phone2: string;
   allergies: string[];
   imgUrl: string;
+  dosage: number;
 };
 const phoneRegExp = /^(03\d{7}|05\d{8})$/;
 
@@ -47,8 +53,11 @@ const schema = Yup.object().shape({
     .of(Yup.string().required())
     .min(1, "חובה להזין לפחות אלרגיה אחת")
     .required("אלרגיות זהו שדה חובה"),
+  dosage: Yup.number()
+    .min(0, "מינון חייב להיות חיובי")
+    .required("חובה להזין מינון"),
 });
-const Form = () => {
+const Form2 = () => {
   // React Hook Form setup
   const {
     control,
@@ -66,6 +75,7 @@ const Form = () => {
       phone2: "",
       imgUrl: "",
       allergies: [],
+      dosage: 0,
     },
     mode: "onBlur",
   });
@@ -83,74 +93,66 @@ const Form = () => {
   const imageWidthPx = 1190;
   const imageHeightPx = 1683;
 
-function createTextBlock(
-  text: string,
-  rectPx: { width: number; height: number },
-  options?: { font?: string; lineHeight?: number; padding?: number }
-): string {
-  const canvas = document.createElement("canvas");
-  canvas.width = rectPx.width;
-  canvas.height = rectPx.height;
-  const ctx = canvas.getContext("2d")!;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  function createTextBlock(
+    text: string,
+    rectPx: { width: number; height: number },
+    options?: { font?: string; lineHeight?: number; padding?: number },
+    debug: boolean = false
+  ): string {
+    const canvas = document.createElement("canvas");
+    canvas.width = rectPx.width;
+    canvas.height = rectPx.height;
+    const ctx = canvas.getContext("2d")!;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // --- חישוב אוטומטי של גודל פונט, lineHeight ו-padding לפי הריבוע ---
-  const padding = options?.padding ?? Math.max(2, rectPx.width * 0.03);
-  const fontSize = options?.font
-    ? parseInt(options.font.replace(/\D/g, ""))
-    : Math.max(8, rectPx.height * 0.6); // גודל פונט אוטומטי לפי גובה הריבוע
-  const lineHeight = options?.lineHeight ?? fontSize + 2;
+    const padding = options?.padding ?? Math.max(2, rectPx.width * 0.03);
+    const fontSize = options?.font
+      ? parseInt(options.font.replace(/\D/g, ""))
+      : Math.max(8, rectPx.height * 0.6);
+    const lineHeight = options?.lineHeight ?? fontSize + 2;
 
-  ctx.font = `${fontSize}px Arial`;
-  ctx.textAlign = "right";
-  ctx.direction = "rtl";
-  ctx.fillStyle = "black";
+    ctx.font = `${fontSize}px Arial`;
+    ctx.textAlign = "right";
+    ctx.direction = "rtl";
+    ctx.fillStyle = "black";
 
-  // --- פונקציה לחיתוך טקסט לשורות ---
-  function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
-    const words = text.split(" ");
-    const lines: string[] = [];
-    let currentLine = "";
+    // פונקציה לחיתוך טקסט לשורות לפי \n וריווח
+    function wrapText(
+      ctx: CanvasRenderingContext2D,
+      text: string,
+      maxWidth: number
+    ) {
+      const words = text.split(" ");
+      const lines: string[] = [];
+      let currentLine = "";
 
-    for (let i = 0; i < words.length; i++) {
-      const testLine = currentLine + (currentLine ? " " : "") + words[i];
-      const testWidth = ctx.measureText(testLine).width;
-      if (testWidth > maxWidth) {
-        if (currentLine) lines.push(currentLine);
-        currentLine = words[i];
-      } else {
-        currentLine = testLine;
+      for (let i = 0; i < words.length; i++) {
+        const testLine = currentLine + (currentLine ? " " : "") + words[i];
+        const testWidth = ctx.measureText(testLine).width;
+        if (testWidth > maxWidth) {
+          if (currentLine) lines.push(currentLine);
+          currentLine = words[i];
+        } else {
+          currentLine = testLine;
+        }
       }
+      if (currentLine) lines.push(currentLine);
+      return lines;
     }
-    if (currentLine) lines.push(currentLine);
-    return lines;
+
+    const wrappedLines = text
+      .split("\n")
+      .flatMap((line) => wrapText(ctx, line, canvas.width - 2 * padding));
+
+    wrappedLines.forEach((line, index) => {
+      const y = padding + lineHeight * index;
+      ctx.fillText(line, canvas.width - padding, y);
+    });
+
+    if (debug) document.body.appendChild(canvas);
+
+    return canvas.toDataURL("image/png");
   }
-
-  const wrappedLines = text
-    .split("\n")
-    .flatMap((line) => wrapText(ctx, line, canvas.width - 2 * padding));
-
-  const startX = canvas.width - padding;
-  const startY = padding;
-
-  wrappedLines.forEach((line, index) => {
-    const yPosition = startY + lineHeight * index;
-    if (yPosition + lineHeight > canvas.height - padding) {
-      // קיצור השורה האחרונה אם היא חורגת
-      let truncatedLine = line;
-      const availableWidth = canvas.width - 2 * padding;
-      while (ctx.measureText(truncatedLine).width > availableWidth && truncatedLine.length > 0) {
-        truncatedLine = truncatedLine.slice(0, -1);
-      }
-      ctx.fillText(truncatedLine, startX, yPosition);
-      return;
-    }
-    ctx.fillText(line, startX, yPosition);
-  });
-
-  return canvas.toDataURL("image/png");
-}
-
 
   // --- פונקציה להוספת כמה טקסטים ל-PDF ---
   function addTextBlocksToPDF(
@@ -168,6 +170,7 @@ function createTextBlock(
         w: (rectPx.width / imageWidthPx) * 210,
         h: (rectPx.height / imageHeightPx) * 297,
       };
+      console.log("Adding text block to PDF:", { text, rectPx, options });
 
       const textCanvasData = createTextBlock(
         text,
@@ -177,6 +180,11 @@ function createTextBlock(
         },
         options
       );
+      console.log("=== addTextBlocksToPDF ===");
+      console.log("text:", text);
+      console.log("rectPx:", rectPx);
+      console.log("rectMm:", rectMm);
+
       doc.addImage(
         textCanvasData,
         "PNG",
@@ -223,6 +231,9 @@ function createTextBlock(
     const cropCtx = cropCanvas.getContext("2d")!;
     cropCtx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
 
+    cropCtx.strokeStyle = "black";
+    cropCtx.lineWidth = 15; // עובי המסגרת
+    cropCtx.strokeRect(0, 0, sw, sh);
     doc.addImage(
       cropCanvas.toDataURL("image/jpeg", 0.7),
       "JPEG",
@@ -240,24 +251,24 @@ function createTextBlock(
     const doc = new jsPDF("p", "mm", "a4");
     doc.addImage(formTemplate, "JPEG", 0, 0, 210, 297, undefined, "FAST");
 
-  const textBlocks: {
-  text: string;
-  rectPx: { x: number; y: number; width: number; height: number };
-  options?: { font?: string; lineHeight?: number; padding?: number };
-}[] = [
-  {
-    text: `שם הילד/ה: ${data.name}\nאלרגי/ת ל: ${selected.join(
-      ", "
-    )}\nפלאפון אבא: ${data.phone1}\nפלאפון אמא: ${data.phone2}`,
-    rectPx: { x: 285, y: 250, width: 467, height: 246 },
-    options: { font: "24px Arial", lineHeight: 44, padding: 48 },
-  },
-  {
-    text: "14",
-    rectPx: { x: 188, y: 722, width: 46, height: 28 },
-    options: { font: "18px Arial", lineHeight: 20, padding: 2 },
-  },
-];
+    const textBlocks: {
+      text: string;
+      rectPx: { x: number; y: number; width: number; height: number };
+      options?: { font?: string; lineHeight?: number; padding?: number };
+    }[] = [
+      {
+        text: `שם הילד/ה: ${data.name}\nאלרגי/ת ל: ${selected.join(
+          ", "
+        )}\nפלאפון אבא: ${data.phone1}\nפלאפון אמא: ${data.phone2}`,
+        rectPx: { x: 285, y: 250, width: 467, height: 246 },
+        options: { font: "24px Arial", lineHeight: 44, padding: 48 },
+      },
+      {
+        text: `${data.dosage}`,
+        rectPx: { x: 135, y: 663, width: 130, height: 125 },
+        options: { font: "24px Arial", lineHeight: 44, padding: 50 },
+      },
+    ];
 
     if (data.imgUrl) {
       const img = new Image();
@@ -271,7 +282,7 @@ function createTextBlock(
       };
     } else {
       addTextBlocksToPDF(doc, textBlocks);
-      doc.save("test_form.pdf");
+      doc.save(`טופס אלרגיה ${data.name}.pdf`);
     }
   };
   const handleCloseSuccess = () => {
@@ -283,10 +294,8 @@ function createTextBlock(
   };
 
   const onSubmit = async (data: FormValues) => {
-    console.log(data);
     try {
       setProgress(100);
-      console.log(data);
       await handleExportPDF(data);
       setShowSuccess(true);
     } catch (error) {
@@ -630,13 +639,78 @@ function createTextBlock(
             },
           }}
         />
+        <TextField
+          {...register("dosage")}
+          label="מינון טיפות"
+          type="number" // ← שדה מספר
+          variant="outlined"
+          fullWidth
+          error={!!errors.dosage}
+          helperText={errors.dosage?.message}
+          margin="normal"
+          InputLabelProps={{
+            style: {
+              color: "#4ed9df",
+              fontWeight: 600,
+            },
+          }}
+          InputProps={{
+            style: {
+              color: "black",
+              fontSize: "15px",
+            },
+            startAdornment: (
+              <InputAdornment position="start">
+                <LocalDrink sx={{ color: "#4ed9df" }} /> {/* אייקון לטיפות */}
+              </InputAdornment>
+            ),
+          }}
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: "16px",
+              backgroundColor: "white",
+              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+              border: "2px solid transparent",
+              backgroundClip: "padding-box",
+              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.08)",
+              "&:hover": {
+                backgroundColor: "white",
+                transform: "translateY(-2px)",
+                boxShadow: "0 8px 30px rgba(233, 51, 69, 0.15)",
+                "& fieldset": {
+                  borderColor: "#4ed9df",
+                  borderWidth: "2px",
+                },
+              },
+              "&.Mui-focused": {
+                backgroundColor: "white",
+                transform: "translateY(-2px)",
+                boxShadow: "0 8px 30px rgba(233, 51, 69, 0.2)",
+                "& fieldset": {
+                  borderColor: "#4ed9df !important",
+                  borderWidth: "2px",
+                },
+              },
+              "& fieldset": {
+                borderColor: "rgba(233, 51, 69, 0.2)",
+                borderWidth: "2px",
+              },
+            },
+            "& .MuiFormHelperText-root": {
+              fontSize: "13px",
+              marginLeft: 0,
+              marginTop: "8px",
+              fontWeight: 500,
+            },
+          }}
+        />
 
         {/* Allergies Field */}
         <Controller
           name="allergies"
           control={control}
           render={({ field }) => (
-            <Box sx={{ mt: 3, mb: 3 }}>
+            <Box>
               <Autocomplete
                 multiple
                 freeSolo
@@ -1046,4 +1120,4 @@ function createTextBlock(
   );
 };
 
-export default Form;
+export default Form2;
