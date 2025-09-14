@@ -268,7 +268,13 @@ const Form = () => {
         rectPx: { x: 135, y: 663, width: 130, height: 125 },
         options: { font: "24px Arial", lineHeight: 44, padding: 50 },
       },
+      {
+        text: `אני אלרגי ל${data.allergies.join(", ")}`,
+        rectPx: { x: 757, y: 242, width: 373, height: 244 },
+        options: { font: "35px Arial", lineHeight: 44, padding: 50 },
+      },
     ];
+    console.log(data.allergies);
 
     if (data.imgUrl) {
       const img = new Image();
